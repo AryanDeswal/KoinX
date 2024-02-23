@@ -15,9 +15,7 @@ app.use(bodyParser.json());
 // Connect to MongoDB
 const dbURL = process.env.DB_URL || 'mongodb://localhost:27017/cryptoDB';
 mongoose.connect(dbURL)
-    .then((result) => app.listen(3000, () => {
-        console.log('Server is running on port 3000');
-    }))
+    .then((result) => { console.log('Connected to Database') })
     .catch((err) => console.log(err));
 
 // Initial update when server starts
@@ -29,3 +27,7 @@ cron.schedule('0 * * * *', () => {
 });
 
 app.use(homeRoutes);
+
+app.listen(3000, () => {
+    console.log('Server is running on port 3000');
+})

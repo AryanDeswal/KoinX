@@ -5,6 +5,11 @@ const { getCurrencySymbolById } = require('../utils/getCurrencySymbolById');
 module.exports.postPrice = async (req, res) => {
     const { fromCurrency, toCurrency, date } = req.body;
 
+    // Check the presence of all necessary fields
+    if (!fromCurrency || !toCurrency || !date) {
+        return res.status(422).json({ error: 'Incomplete request due to missing data' });
+    }
+
     // Check if date format is valid
     if (!isValidDate(date)) {
         return res.status(400).json({ error: 'Invalid date format or date out of range. Please use dd-mm-yyyy format and ensure the date is valid.' });
@@ -48,3 +53,31 @@ module.exports.postPrice = async (req, res) => {
         res.status(500).json({ error: 'An error occurred while fetching data.' });
     }
 };
+
+module.exports.postCompanies = async (req, res) => {
+    const { currency } = req.body;
+
+    // Check the presence of all necessary fields
+    if (!currency) {
+        return res.status(422).json({ error: 'Incomplete request due to missing data.' });
+    }
+
+    // Validate currency input
+    if (!['bitcoin', 'ethereum'].includes(currency.toLowerCase())) {
+        return res.status(400).json({ error: 'Invalid currency. Possible values are only bitcoin or ethereum.' });
+    }
+
+    try {
+        // Fetch list of companies from Coingecko API
+        const response = await axios.get(`https://api.coingecko.com/api/v3/companies/public_treasury/${currency}`);
+
+        // Extract the list of companies
+        const companies = response.data.companies.map(company => company.name);
+
+        // Send the response
+        res.json({ companies });
+    } catch (error) {
+        console.error('Error fetching companies:', error);
+        res.status(404).json({ error: 'Coin not supported' });
+    }
+}

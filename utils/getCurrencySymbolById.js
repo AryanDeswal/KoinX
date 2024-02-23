@@ -1,10 +1,10 @@
-const { Crypto } = require('../models/Crypto');
+const axios = require('axios');
 
 // Function to get the currency symbol by its ID
-async function getCurrencySymbolById(id) {
+async function getCurrencySymbolById(currencyID) {
     try {
-        const currency = await Crypto.findOne({ id });
-        return currency ? currency.symbol : null; // Return symbol if found, null otherwise
+        const response = await axios.get(`https://api.coingecko.com/api/v3/coins/${currencyID}`);
+        return response.data.symbol; // Return symbol of the currency
     } catch (error) {
         console.error('Error fetching currency data:', error);
         throw new Error('An error occurred while fetching currency data.');

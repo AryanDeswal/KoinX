@@ -1,6 +1,8 @@
 const router = require('express').Router();
-const { postPrice } = require('../controllers/homeController')
+const { postPrice, postCompanies } = require('../controllers/homeController')
 
 router.post('/price', postPrice);
+
+router.post('/companies', postCompanies);
 
 module.exports = router;
