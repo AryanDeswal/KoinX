@@ -6,6 +6,7 @@ const express = require('express');
 const mongoose = require('mongoose');
 const cron = require('node-cron');
 const bodyParser = require('body-parser');
+const homeRoutes = require('./routes/homeRoutes');
 const { updateCryptos } = require('./utils/updateCryptos')
 
 const app = express();
@@ -26,3 +27,5 @@ updateCryptos();
 cron.schedule('0 * * * *', () => {
     updateCryptos();
 });
+
+app.use(homeRoutes);

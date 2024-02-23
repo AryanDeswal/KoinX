@@ -1,5 +1,5 @@
 const axios = require('axios');
-const {Crypto} = require('../models/Crypto');
+const { Crypto } = require('../models/Crypto');
 
 // Function to fetch and update cryptocurrencies
 async function updateCryptos() {
@@ -11,7 +11,13 @@ async function updateCryptos() {
         await Crypto.deleteMany({});
 
         // Insert new data
-        await Crypto.insertMany(cryptos);
+        // Iterate through the array
+        for (const crypto of cryptos) {
+            // Create a new instance of the Dog model with each object
+            const newCrypto = new Crypto(crypto);
+            // Save the new dog object to the database
+            await newCrypto.save();
+        }
         console.log('Cryptocurrencies updated successfully');
     } catch (error) {
         console.error('Error updating cryptocurrencies:', error);
