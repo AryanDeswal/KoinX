@@ -1,69 +1,142 @@
-# Cryptocurrency API Project
+# KoinX
 
-This repository contains code for a cryptocurrency API project that performs various tasks related to cryptocurrencies using Coingecko's API. The project consists of three main tasks, each with its own set of functionalities:
+A Node.js REST API on top of the CoinGecko API for historical crypto-to-crypto prices and public companies that hold Bitcoin or Ethereum.
 
-## Task 1: Update Cryptocurrency List in MongoDB
+![Node.js](https://img.shields.io/badge/Node.js-339933?logo=nodedotjs&logoColor=white)
+![Express](https://img.shields.io/badge/Express-000000?logo=express&logoColor=white)
+![MongoDB](https://img.shields.io/badge/MongoDB-47A248?logo=mongodb&logoColor=white)
+![CoinGecko](https://img.shields.io/badge/CoinGecko_API-8DC63F?logo=coingecko&logoColor=white)
 
-- Fetches the names and IDs of all cryptocurrencies from Coingecko's API.
-- Stores this information in a MongoDB database.
-- Implements a background job to keep the cryptocurrency list updated every hour.
+## About
 
-## Task 2: Retrieve Historical Cryptocurrency Prices
+KoinX is an Express backend built around three tasks. It keeps a MongoDB copy of CoinGecko's full coin list, refreshed by a background job every hour. It exposes an endpoint that returns the price of one cryptocurrency in terms of another on a given date, and another that lists the public companies holding Bitcoin or Ethereum in their treasury.
 
-- Builds an API that retrieves the price of one cryptocurrency in terms of another cryptocurrency on a specific date.
-- Accepts requests with the `fromCurrency`, `toCurrency`, and `date` parameters.
-- Utilizes Coingecko's APIs to fetch historical price data.
+## Features
 
-## Task 3: Get Companies Holding Specific Cryptocurrency
+- **Coin list sync:** fetches every coin's `id`, `symbol` and `name` from CoinGecko's `/coins/list` and stores it in MongoDB, on startup and then every hour with `node-cron`
+- **Historical price:** `POST /price` returns the price of `fromCurrency` in `toCurrency` on a `dd-mm-yyyy` date, using CoinGecko's `/coins/{id}/history`
+- **Public treasury:** `POST /companies` returns the names of companies holding `bitcoin` or `ethereum`, using CoinGecko's `/companies/public_treasury/{coin}`
+- Input checks: missing fields (`422`), date format and calendar validity (`400`), allowed currencies (`400`)
 
-- Integrates Coingecko's `/companies/public_treasury` API to retrieve a list of companies that hold a particular cryptocurrency.
-- Accepts requests with the `currency` parameter specifying the cryptocurrency (only Bitcoin or Ethereum).
+## Tech Stack
 
+- **Runtime:** Node.js
+- **Framework:** Express 4, body-parser
+- **Database:** MongoDB with Mongoose 8
+- **HTTP client:** axios
+- **Scheduler:** node-cron
+- **Config:** dotenv
+- **Dev:** nodemon
 
-## Getting Started:
+## Project Structure
 
-1. Clone this repository to your local machine.
-2. Set up a MongoDB instance, either locally or using MongoDB Atlas.
-3. Set up the environment and install the required dependencies.
-4. Run the application.
+```
+KoinX/
+├── app.js                          # Express app, MongoDB connection, hourly cron job, server on port 3000
+├── controllers/
+│   └── homeController.js           # /price and /companies handlers
+├── models/
+│   └── Crypto.js                   # Mongoose schema: id, name, symbol
+├── routes/
+│   └── homeRoutes.js               # Route definitions
+├── utils/
+│   ├── updateCryptos.js            # Refreshes the coin list in MongoDB
+│   ├── getCurrencySymbolById.js    # Looks up a coin's symbol on CoinGecko
+│   └── isValidDate.js              # dd-mm-yyyy validation
+├── .example.env                    # Environment variable template
+└── package.json
+```
 
-## API Documentation:
+## Getting Started
 
-- **Task 2**
-    - Endpoint: `/price`
-    - Method: POST
-    - Request Body Schema:
-        ```json
-        {
-		      "fromCurrency": "bitcoin",
-		      "toCurrency": "ethereum",
-		      "date": "13-01-2022"
-	    }
-        ```
-    - Response Format:
-        ```json
-        {
-		      "fromCurrency": "bitcoin",
-		      "toCurrency": "ethereum",
-		      "date": "12-01-2022",
-		      "price": 13.179645730746424
-	    }
-        ```
-- **Task 3:**
-    - Endpoint: `/companies`
-    - Method: POST
-    - Request Body Schema:
-        ```json
-        {
-		        "currency":"ethereum"
-	    }
-        ```
-    - Response Format:
-        ```json
-        {
-		        "companies": [
-			          "Meitu Inc",
-			          "Mogo Inc."
-		        ]
-	    }
-        ```
+### Prerequisites
+
+- Node.js and npm
+- A MongoDB instance (local or MongoDB Atlas)
+
+### Installation
+
+```bash
+git clone https://github.com/AryanDeswal/KoinX.git
+cd KoinX
+npm install
+```
+
+### Environment Variables
+
+Copy `.example.env` to `.env` and set the value:
+
+```bash
+cp .example.env .env
+```
+
+| Variable | Purpose                                                                                  |
+| -------- | ---------------------------------------------------------------------------------------- |
+| `DB_URL` | MongoDB connection string. Defaults to `mongodb://localhost:27017/cryptoDB` if not set.   |
+
+`.env` is only loaded when `NODE_ENV` is not `production`. No CoinGecko API key is used; requests go to the public `api.coingecko.com/api/v3` endpoints.
+
+### Run
+
+```bash
+npm start       # node app.js
+npm run serve   # nodemon app.js (auto-reload)
+```
+
+The server listens on `http://localhost:3000`. The coin list sync runs once at startup and then at the start of every hour.
+
+## API Reference
+
+| Method | Route        | Description                                                         |
+| ------ | ------------ | ------------------------------------------------------------------- |
+| POST   | `/price`     | Price of `fromCurrency` in `toCurrency` on `date` (`dd-mm-yyyy`)     |
+| POST   | `/companies` | Companies holding `currency` (`bitcoin` or `ethereum`)              |
+
+Currencies are CoinGecko coin IDs, for example `bitcoin` or `ethereum`.
+
+### `POST /price`
+
+Request:
+
+```json
+{
+  "fromCurrency": "bitcoin",
+  "toCurrency": "ethereum",
+  "date": "12-01-2022"
+}
+```
+
+Response:
+
+```json
+{
+  "fromCurrency": "bitcoin",
+  "toCurrency": "ethereum",
+  "date": "12-01-2022",
+  "price": 13.179645730746424
+}
+```
+
+The price comes from the `market_data.current_price` of `fromCurrency` on that date, keyed by the symbol of `toCurrency`. So `toCurrency` has to be one of the currencies CoinGecko quotes prices in (for example `bitcoin`, `ethereum`, `binancecoin`).
+
+Errors: `422` missing fields, `400` invalid date, `404` no data for that date or no conversion to `toCurrency`, `500` CoinGecko request failed.
+
+### `POST /companies`
+
+Request:
+
+```json
+{
+  "currency": "ethereum"
+}
+```
+
+Response:
+
+```json
+{
+  "companies": ["Meitu Inc", "Mogo Inc."]
+}
+```
+
+Errors: `422` missing `currency`, `400` currency other than `bitcoin` or `ethereum`, `404` CoinGecko request failed.
